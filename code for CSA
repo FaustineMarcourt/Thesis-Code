@@ -1,0 +1,62 @@
+
+# Install and load the readxl package and Load Required Libraries
+library(readxl)
+library(dplyr)  # For data manipulation (mutate)
+library(SentimentAnalysis)  # For sentiment analysis
+
+# Read the Excel file into a data frame
+reviews_data <- read_excel("C:/Users/faustine marcourt/OneDrive/Documents/ROTTERDAM UNIVERSITY/Courses/THESIS/Data/Test3_ORV.xlsx")
+
+# Check the structure of the data frame
+str(reviews_data)
+
+# Ensure that the column name matches the actual column name in the data
+# If the column name is different, replace "Review_description" with the correct column name
+# For example: reviews_column <- reviews_data$correct_column_name
+reviews_column <- reviews_data$Review_description
+
+# Perform data cleaning to handle NA values (you can remove rows with NA values in the Review_description column) 
+clean_reviews_data <- reviews_data %>% 
+  filter(!is.na(reviews_column))
+
+# Perform sentiment analysis on the cleaned Review_description data
+sentiment_scores <- analyzeSentiment(clean_reviews_data$Review_description, lexicon = "afinn")
+#(is it the right code in order to have efficient results ?) 
+
+# Convert sentiment scores to a numeric vector
+#sentiment_scores_vector <- as.numeric(unlist(sentiment_scores))
+#### AKS: I think this i not correct
+#I'd suggest you pick on of the measures int he sentiment_scores instead such as
+sentiment_scores_vector <- sentiment_scores$SentimentQDAP
+
+
+#(Here is the part where it starts being a bit messy because I am not really sure if the reviews are really classify in the right category because at then end when the 10 more extremes positive reviews are given I have negative reviews) 
+# Classify Review_description into positive, negative, and neutral categories based on sentiment scores
+positive_reviews <- clean_reviews_data$Review_description[sentiment_scores_vector > 0]
+negative_reviews <- clean_reviews_data$Review_description[sentiment_scores_vector < 0]
+neutral_reviews <- clean_reviews_data$Review_description[sentiment_scores_vector == 0]
+
+# Select the 10 most extreme Review_description for each category
+#### AKS: this code is also not correct, you must sort it by the numeric scorenot by the text as you do now
+# most_positive <- head(sort(positive_reviews), 10)
+# most_negative <- tail(sort(negative_reviews), 10)
+# most_neutral <- head(sort(neutral_reviews), 10)
+
+
+
+most_positive <- tail(clean_reviews_data$Review_description[order(sentiment_scores_vector)], 10)
+most_negative <- head(clean_reviews_data$Review_description[order(sentiment_scores_vector)], 10)
+#Doesnt makes sense to rank them, since they all have the same score, so i'd suggest randomly picking 10 neutral ones
+most_neutral <- sample(neutral_reviews,10)
+
+
+# Print the most extreme Review_description for each category
+cat("**Most Positive Reviews**\n")
+print(most_positive)
+
+cat("\n**Most Negative Reviews**\n")
+print(most_negative)
+
+cat("\n**Most Neutral Reviews**\n")
+print(most_neutral)
+
