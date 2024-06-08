@@ -1,0 +1,748 @@
+# Install and load the readxl package and Load Required Libraries
+library(readxl)
+
+
+# Read the Excel file into a data frame
+data <- read_excel("C:/Users/faustine marcourt/OneDrive/Documents/ROTTERDAM UNIVERSITY/Courses/THESIS/DATA SURVEY GOOD CONDITIONS.xlsx")
+
+
+
+##cleaning the data 
+# Filter the data frame to remove rows where the column is 'False'
+data_without_unfinished <- data[data$Finished != "False", ]
+
+# Filter the data frame to keep only the rows where the answer to the question is 'disagree'
+cleaned_data <- data_without_unfinished[data_without_unfinished$Q13_6 == "Disagree", ]
+
+
+
+
+##gender distribution 
+# Create a table of gender counts
+gender_counts <- table(cleaned_data$Q15)
+
+# Calculate percentages
+gender_percentages <- prop.table(gender_counts) * 100
+
+# Print percentages
+print(gender_percentages)
+
+# Perform the chi-square test for independence
+chi_sq_test_gender <- chisq.test(gender_counts)
+
+# Extract chi-square statistic, degrees of freedom, and p-value
+chi_sq_statistic_gender <- chi_sq_test_gender$statistic
+degrees_of_freedom_gender <- chi_sq_test_gender$parameter
+p_value_gender <- chi_sq_test_gender$p.value
+
+# Print the results
+cat("Chi-square =", chi_sq_statistic_gender, "; df =", degrees_of_freedom_gender, "; p =", p_value_gender)
+
+# Create a pie chart of gender distribution
+pie(gender_percentages,
+    main = "Gender Distribution",
+    col = rainbow(length(gender_percentages)),
+    labels = paste(names(gender_counts), ": ", round(gender_percentages, 1), "%", sep = ""),
+    cex = 0.8)
+
+
+
+##age distribution 
+# Convert 'Q14' column to numeric
+cleaned_data$Q14 <- as.numeric(cleaned_data$Q14)
+
+mean(cleaned_data$Q14)
+summary(cleaned_data$Q14)
+sd(cleaned_data$Q14)
+
+# Define breaks for categories
+breaks <- c(0, 17, 24, 34, 44, 59, 74, Inf)
+
+
+# Define labels for categories
+labels <- c("0-17", "18-24", "25-34", "35-44", "45-59", "60-74", "75+")
+
+# Create categories
+cleaned_data$Q14_categories <- cut(cleaned_data$Q14, breaks = breaks, labels = labels, right = FALSE)
+
+# Calculate frequencies of each category
+category_freq_age <- table(cleaned_data$Q14_categories)
+
+# Calculate percentages
+category_percentages_age <- prop.table(category_freq_age) * 100
+
+# Print the percentages
+print(category_percentages_age)
+
+# Perform chi-square test for independence
+chi_sq_test_age <- chisq.test(category_freq_age)
+
+# Extract chi-square statistic, degrees of freedom, and p-value
+chi_sq_statistic_age <- chi_sq_test_age$statistic
+degrees_of_freedom_age <- chi_sq_test_age$parameter
+p_value_age <- chi_sq_test_age$p.value
+
+# Print the results
+cat("Chi-square =", chi_sq_statistic_age, "; df =", degrees_of_freedom_age, "; p =", p_value_age)
+
+# Create a bar chart of age distribution
+barplot(category_freq_age,
+        main = "Age Distribution",
+        xlab = "Age Categories",
+        ylab = "Frequency",
+        col = "skyblue",
+        ylim = c(0, max(category_freq_age) * 1.1),
+        names.arg = names(category_freq_age))
+
+
+
+
+##educational level 
+# Calculate frequencies of each educational level category
+education_freq <- table(cleaned_data$Q16)
+print(education_freq)
+
+# Define categories of interest
+categories_of_interest <- c("Less than high school", "High school graduate", "Some college", "Bachelor’s degree", "Postgraduate degree")
+
+# Filter frequencies for categories of interest
+education_freq_of_interest <- education_freq[names(education_freq) %in% categories_of_interest]
+
+# Calculate percentages
+education_percentages <- prop.table(education_freq_of_interest) * 100
+
+# Print the percentages
+print(education_percentages)
+
+# Perform chi-square goodness-of-fit test
+chi_sq_test_education <- chisq.test(education_freq)
+
+# Extract chi-square statistic, degrees of freedom, and p-value
+chi_sq_statistic_education <- chi_sq_test_education$statistic
+degrees_of_freedom_education <- chi_sq_test_education$parameter
+p_value_education <- chi_sq_test_education$p.value
+
+# Print the results
+cat("Chi-square =", chi_sq_statistic_education, "; df =", degrees_of_freedom_education, "; p =", p_value_education)
+
+# Create a bar chart of educational level distribution
+barplot(education_freq_of_interest,
+        main = "Educational Level Distribution",
+        xlab = "Educational Level",
+        ylab = "Frequency",
+        col = "skyblue",
+        ylim = c(0, max(education_freq_of_interest) * 1.1),
+        names.arg = names(education_freq_of_interest))
+
+
+
+##DV Cronbach'alpha 
+# Load required packages
+library(dplyr)
+
+# Step 1: Extract Likert scale responses for the two questions
+likert_responses <- cleaned_data[, c("Q9_1", "Q9_2")]
+
+# Step 2: Convert Likert scale responses to character strings
+likert_responses <- as.data.frame(lapply(likert_responses, as.character))
+
+# Step 3: Recode Likert scale responses into numeric values
+likert_numeric <- likert_responses %>%
+  mutate_all(~ case_when(
+    . == "Very Unlikely" ~ 1,
+    . == "Unlikely" ~ 2,
+    . == "Somewhat Unlikely" ~ 3,
+    . == "Neutral" ~ 4,
+    . == "Somewhat Likely" ~ 5,
+    . == "Likely" ~ 6,
+    . == "Very Likely" ~ 7,
+    TRUE ~ as.double(NA)  # Handle NA values as double
+  ))
+
+# Print the recoded Likert scale responses
+print(likert_numeric)
+
+# Load required packages
+library(psych)
+
+# Calculate Cronbach's alpha for purchase intention scales
+cronbach_alpha <- alpha(likert_numeric)
+
+# Print Cronbach's alpha
+print(cronbach_alpha)
+
+
+##boxplot outliers of PI 
+#average of Q9_1 and Q9_2 --> purchase intention 
+likert_numeric$purchase_intention <- rowMeans(likert_numeric[, c("Q9_1", "Q9_2")], na.rm = TRUE)
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+# Add 'purchase_intention' column from likert_numeric to cleaned_data
+cleaned_data$purchase_intention <- likert_numeric$purchase_intention
+
+# Create the boxplot with outliers
+ggplot(cleaned_data, aes(x = as.factor(Q17), y = purchase_intention)) +
+  geom_boxplot(outlier.shape = NA) +  # Remove the default outliers
+  geom_jitter(shape = 16, color = "brown", width = 0.1) +  # Add outliers as jittered points
+  scale_x_discrete(labels = c("1" = "Positive", "2" = "Negative", "3" = "Neutral")) +
+  labs(x = "Conditions", y = "Purchase Intention") +
+  ggtitle("Purchase Intention Boxplot with Outliers per Condition") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+##descriptive stat 
+# Descriptive statistics for age (Q14)
+age_stats <- summary(cleaned_data$Q14)
+
+# Assuming 'Female' is coded as 1 and 'Male' is coded as 2
+cleaned_data$Q15_numeric <- ifelse(cleaned_data$Q15 == "Female", 1, ifelse(cleaned_data$Q15 == "Male", 2, NA))
+
+# Recode education level (Q16) from character to numeric
+# Assuming 'Less than high school' is coded as 1, 'High school graduate' as 2, 'Some college' as 3,
+# 'Bachelor’s degree' as 4, and 'Postgraduate degree' as 5
+cleaned_data$Q16_numeric <- ifelse(cleaned_data$Q16 == "Less than high school", 1,
+                                   ifelse(cleaned_data$Q16 == "High school graduate", 2,
+                                          ifelse(cleaned_data$Q16 == "Some college", 3,
+                                                 ifelse(cleaned_data$Q16 == "Bachelor’s degree", 4,
+                                                        ifelse(cleaned_data$Q16 == "Postgraduate degree", 5, NA)))))
+
+
+#correlation analysis 
+# Load necessary packages
+library(dplyr)
+
+# Select the variables for correlation analysis (including control variables, moderator, IV, and DV)
+correlation_data <- select(cleaned_data, Q14, Q15_numeric, Q16_numeric, average_CA, purchase_intention, Q17)
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(correlation_data, use="complete.obs")
+
+# Print the correlation matrix
+print("Correlation Matrix:")
+print(correlation_matrix)
+
+##with level of sign
+# Install and load the Hmisc package if not already installed
+if (!requireNamespace("Hmisc", quietly = TRUE)) {
+  install.packages("Hmisc")
+}
+library(Hmisc)
+
+# Select numeric columns for correlation calculation
+numeric_data <- correlation_data[, sapply(correlation_data, is.numeric)]
+
+# Compute the correlation matrix with p-values
+correlation_result <- rcorr(as.matrix(numeric_data))
+
+# Extract correlation matrix
+correlation_matrix <- correlation_result$r
+
+# Extract p-value matrix
+p_value_matrix <- correlation_result$P
+
+# Print correlation matrix
+print("Correlation Matrix:")
+print(correlation_matrix)
+
+# Print p-value matrix
+print("P-Value Matrix:")
+print(p_value_matrix)
+
+
+##randomasation check 
+# Load necessary library if not already loaded
+library(dplyr)
+
+# Subset data based on conditions
+positive_data <- cleaned_data %>% filter(Q17 == 1)
+negative_data <- cleaned_data %>% filter(Q17 == 2)
+neutral_data <- cleaned_data %>% filter(Q17 == 3)
+
+# Calculate counts of YES and NO for control variable in each condition
+positive_counts <- table(positive_data$Q3)
+negative_counts <- table(negative_data$Q3)
+neutral_counts <- table(neutral_data$Q3)
+
+# Combine counts into a data frame for easier comparison
+counts_df <- data.frame(
+  Condition = c("Positive", "Negative", "Neutral"),
+  Yes = c(positive_counts["YES"], negative_counts["YES"], neutral_counts["YES"]),
+  No = c(positive_counts["NO"], negative_counts["NO"], neutral_counts["NO"])
+)
+
+# Perform a chi-squared test
+test_result <- chisq.test(table(cleaned_data$Q17, cleaned_data$Q3))
+print(test_result)
+
+
+##age 
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+
+# Summarize the data to create a contingency table
+contingency_table <- cleaned_data %>%
+  count(Q17, Q14_categories) %>%
+  pivot_wider(names_from = Q14_categories, values_from = n, values_fill = list(n = 0))
+
+# Convert the contingency table to a matrix
+contingency_matrix <- as.matrix(contingency_table[, -1])
+rownames(contingency_matrix) <- c("Positive", "Negative", "Neutral")
+
+# Perform chi-square test of independence
+chisq_test <- chisq.test(contingency_matrix)
+
+# Print the results
+print(chisq_test)
+
+##gender 
+# Summarize the data to create a contingency table
+contingency_table_gender <- cleaned_data %>%
+  count(Q17, Q15) %>%
+  pivot_wider(names_from = Q15, values_from = n, values_fill = list(n = 0))
+
+# Convert the contingency table to a matrix
+contingency_matrix_gender <- as.matrix(contingency_table_gender[, -1])
+rownames(contingency_matrix_gender) <- c("Positive", "Negative", "Neutral")
+
+# Perform chi-square test of independence
+chisq_test_gender <- chisq.test(contingency_matrix_gender)
+
+# Print the results
+print(chisq_test_gender)
+
+
+##education 
+# Summarize the data to create a contingency table
+contingency_table_education <- cleaned_data %>%
+  count(Q17, Q16) %>%
+  pivot_wider(names_from = Q16, values_from = n, values_fill = list(n = 0))
+
+# Convert the contingency table to a matrix
+contingency_matrix_education <- as.matrix(contingency_table_education[, -1])
+rownames(contingency_matrix_education) <- c("Positive", "Negative", "Neutral")
+
+# Perform chi-square test of independence
+chisq_test_education <- chisq.test(contingency_matrix_education)
+
+# Print the results
+print(chisq_test_education)
+
+
+
+
+##control group 
+#N 
+N=40 
+#mean of the control group 
+mean(neutral_data$purchase_intention)
+#sd of the control group 
+sd(neutral_data$purchase_intention)
+
+
+##Negative reviews 
+#N 
+N=36 
+#mean of the control group 
+mean(negative_data$purchase_intention)
+#sd of the control group 
+sd(negative_data$purchase_intention)
+
+##Positive reviews 
+#N 
+N=41
+#mean of the control group 
+mean(positive_data$purchase_intention)
+#sd of the control group 
+sd(positive_data$purchase_intention)
+
+
+##hypothesis analysis 
+##hypothesis 1 (negative condition)
+#mean of the control group 
+mean(neutral_data$purchase_intention)
+#sd of the control group 
+sd(neutral_data$purchase_intention)
+#mean of the negative condition 
+mean(negative_data$purchase_intention)
+#sd of the negative condition 
+sd(negative_data$purchase_intention)
+# Convert cleaned_data$Q17 to a factor
+cleaned_data$Q17 <- factor(cleaned_data$Q17)
+
+# Ensure that condition 3 is the baseline level for Q17
+cleaned_data$Q17 <- relevel(cleaned_data$Q17, ref = "3")
+
+# Filter out condition 1 from cleaned_data
+cleaned_data_filtered <- cleaned_data %>% filter(Q17 != "1")
+
+# Perform linear regression with condition 2 (Negative) as the IV and purchase intention as the DV
+regression_result_H1 <- lm(purchase_intention ~ Q17, data = cleaned_data_filtered)
+
+# Print the summary of the regression
+summary(regression_result_H1)
+
+# Get the 95% confidence intervals for the model coefficients
+confint(regression_result_H1)
+
+# Load necessary package
+if (!require(car)) {
+  install.packages("car")
+  library(car)
+}
+
+# Perform Levene's Test for equal variances Hypo 1 
+leveneTest(purchase_intention ~ Q17, data = cleaned_data_filtered)
+library(car)
+
+# Default center = median
+leveneTest(purchase_intention ~ Q17, data = cleaned_data_filtered)
+
+# Using mean as the center
+leveneTest(purchase_intention ~ Q17, data = cleaned_data_filtered, center = mean)
+
+# Using a trimmed mean (e.g., 10% trimmed mean) as the center
+leveneTest(purchase_intention ~ Q17, data = cleaned_data_filtered, center = function(x) mean(x, trim = 0.1))
+
+
+# Assuming your data frame is named cleaned_data
+# Step 1: Filter out rows where Q17 equals 1
+filtered_data <- cleaned_data[cleaned_data$Q17 != 1, ]
+
+# Step 2: Recode Q17 as a factor with the desired baseline
+filtered_data$Q17 <- factor(filtered_data$Q17, levels = c(3, 2))
+
+# Step 3: Perform ANOVA
+anova_result_H1 <- aov(purchase_intention ~ Q17, data = filtered_data)
+
+# Print the summary of the ANOVA
+summary(anova_result_H1)
+
+
+##histogram negative condition 
+# Convert Q17 to numeric (assuming Q17 is a factor)
+cleaned_data$Q17 <- as.numeric(as.character(cleaned_data$Q17))
+
+# Extract residuals from the regression model
+residuals <- residuals(regression_result_H1)
+
+# Create a dataframe with purchase intention and condition
+hist_data <- data.frame(purchase_intention = cleaned_data_filtered$purchase_intention,
+                        condition = cleaned_data_filtered$Q17,
+                        residuals = residuals)
+
+# Filter out only the negative (condition 2) and control (condition 3) groups
+hist_data <- hist_data %>% filter(condition %in% c("2", "3"))
+
+# Map condition labels
+hist_data$condition <- factor(hist_data$condition, levels = c("3", "2"),
+                              labels = c("Control Group", "Negative Condition"))
+
+# Create a histogram
+ggplot(hist_data, aes(x = condition, y = purchase_intention)) +
+  geom_bar(stat = "identity", position = "dodge", fill = "grey", width = 0.5) +
+  labs(title = "Purchase Intention by Condition",
+       x = "Condition",
+       y = "Purchase Intention") +
+  theme_minimal()
+
+#normality check 
+# Create histogram of residuals
+hist(residuals(regression_result_H1), main = "Histogram of Residuals (Hypothesis 1)", xlab = "Residuals")
+
+# Perform Kolmogorov-Smirnov test for normality
+ks_test_H1 <- ks.test(residuals(regression_result_H1), "pnorm")
+print(ks_test_H1)
+
+# Perform Shapiro-Wilk test for normality
+shapiro_test_H1 <- shapiro.test(residuals(regression_result_H1))
+print(shapiro_test_H1)
+
+# Load necessary libraries
+library(ggplot2)
+
+# Calculate means for each condition
+means <- hist_data %>%
+  group_by(condition) %>%
+  summarise(mean_purchase_intention = mean(purchase_intention))
+
+# Create the means plot
+ggplot(means, aes(x = condition, y = mean_purchase_intention)) +
+  geom_point(color = "blue", size = 3, position = position_dodge(width = 0.5)) +  # Add points for means
+  geom_errorbar(aes(ymin = mean_purchase_intention - sd(purchase_intention),
+                    ymax = mean_purchase_intention + sd(purchase_intention)),  # Add error bars (e.g., standard deviation)
+                width = 0.2,                    # Width of error bars
+                position = position_dodge(width = 0.5)) +  # Dodge position
+  labs(x = "Condition", y = "Mean Purchase Intention") +  # Set axis labels
+  theme_minimal()  # Set a minimal theme
+
+##adding control variables to Hypo 1 
+# Perform multiple regression analysis
+model <- lm(purchase_intention ~ Q17 + Q14_categories + Q15 + Q16 + Q3, data = cleaned_data)
+
+# Summarize the regression model
+summary(model)
+
+# Perform ANCOVA analysis
+ancova_model <- lm(purchase_intention ~ Q17 + Q14_categories + Q15 + Q16 + Q3, data = cleaned_data)
+
+# Perform ANOVA on the ANCOVA model
+ancova_anova <- anova(ancova_model)
+
+# Print the ANOVA table
+print(ancova_anova)
+
+
+##hypothesis 2 
+# Convert Q17 to a factor
+cleaned_data$Q17 <- factor(cleaned_data$Q17)
+
+# Ensure that condition 3 is the baseline level for Q17
+cleaned_data$Q17 <- relevel(cleaned_data$Q17, ref = "3")
+
+# Ensure that condition 3 is the baseline level for Q17
+cleaned_data$Q17 <- relevel(cleaned_data$Q17, ref = "3")
+
+# Filter out condition 2 from cleaned_data
+cleaned_data_filtered_H2 <- cleaned_data %>% filter(Q17 != "2")
+
+# Perform linear regression with condition 1 (Positive) as the IV and purchase intention as the DV
+regression_result_H2 <- lm(purchase_intention ~ Q17, data = cleaned_data_filtered_H2)
+
+# Print the summary of the regression
+summary(regression_result_H2)
+
+# Get the 95% confidence intervals for the model coefficients
+confint(regression_result_H2)
+
+# Perform linear regression with condition 2 (Negative) as the IV and purchase intention as the DV
+anova_result_H2 <- aov(purchase_intention ~ Q17, data = cleaned_data_filtered_H2)
+
+# Print the summary of the regression
+summary(anova_result_H2)
+
+# Perform Levene's Test for equal variances
+leveneTest(purchase_intention ~ Q17, data = cleaned_data_filtered_H2)
+
+# Perform Levene's Test for equal variances using the median
+leveneTest(purchase_intention ~ Q17, data = cleaned_data_filtered_H2, center = median)
+
+# Perform Levene's Test for equal variances using the mean
+leveneTest(purchase_intention ~ Q17, data = cleaned_data_filtered_H2, center = mean)
+
+# Perform Levene's Test for equal variances using a 10% trimmed mean
+leveneTest(purchase_intention ~ Q17, data = cleaned_data_filtered_H2, center = function(x) mean(x, trim = 0.1))
+
+#normality check 
+# Create histogram of residuals
+hist(residuals(regression_result_H2), main = "Histogram of Residuals (Hypothesis 2)", xlab = "Residuals")
+
+# Perform Kolmogorov-Smirnov test for normality
+ks_test_H2 <- ks.test(residuals(regression_result_H2), "pnorm")
+print(ks_test_H2)
+
+# Perform Shapiro-Wilk test for normality
+shapiro_test_H2 <- shapiro.test(residuals(regression_result_H2))
+print(shapiro_test_H2)
+
+##histogram 
+# Extract residuals from the regression model
+residuals_H2 <- residuals(regression_result_H2)
+
+# Create a dataframe with purchase intention and condition
+hist_data_H2 <- data.frame(purchase_intention = cleaned_data_filtered_H2$purchase_intention,
+                           condition = cleaned_data_filtered_H2$Q17,
+                           residuals = residuals_H2)
+
+# Filter out only the positive (condition 1) and control (condition 3) groups
+hist_data_H2 <- hist_data_H2 %>% filter(condition %in% c("1", "3"))
+
+# Map condition labels
+hist_data_H2$condition <- factor(hist_data_H2$condition, levels = c("3", "1"),
+                                 labels = c("Control Group", "Positive Condition"))
+
+# Create a histogram with adjusted bar width
+ggplot(hist_data_H2, aes(x = condition, y = purchase_intention)) +
+  geom_bar(stat = "identity", position = "dodge", fill = "grey", width = 0.5) + # Adjust the width parameter
+  labs(title = "Purchase Intention by Condition (Hypothesis 2)",
+       x = "Condition",
+       y = "Purchase Intention") +
+  ylim(0, 8) +  
+  theme_minimal()
+
+##ANOVA test hypo 2 
+# Assuming your data frame is named cleaned_data
+# Step 1: Filter out rows where Q17 equals 2
+filtered_data <- cleaned_data[cleaned_data$Q17 != 2, ]
+
+# Step 2: Recode Q17 as a factor with the desired baseline
+filtered_data$Q17 <- factor(filtered_data$Q17, levels = c(3, 1))
+
+# Step 3: Perform ANOVA
+anova_result_H1 <- aov(purchase_intention ~ Q17, data = filtered_data)
+
+# Print the summary of the ANOVA
+summary(anova_result_H1)
+
+# Calculate means for each condition
+means <- hist_data_H2 %>%
+  group_by(condition) %>%
+  summarise(mean_purchase_intention = mean(purchase_intention))
+
+# Create the means plot
+ggplot(means, aes(x = condition, y = mean_purchase_intention)) +
+  geom_point(color = "blue", size = 3, position = position_dodge(width = 0.5)) +  # Add points for means
+  geom_errorbar(aes(ymin = mean_purchase_intention - sd(purchase_intention),
+                    ymax = mean_purchase_intention + sd(purchase_intention)),  # Add error bars (e.g., standard deviation)
+                width = 0.2,                    # Width of error bars
+                position = position_dodge(width = 0.5)) +  # Dodge position
+  labs(x = "Condition", y = "Mean Purchase Intention") +  # Set axis labels
+  theme_minimal()  # Set a minimal theme
+
+# Perform ANCOVA analysis for Hypothesis 2
+ancova_model_H2 <- lm(purchase_intention ~ Q17 + Q14_categories + Q15 + Q16 + Q3, data = cleaned_data_filtered)
+
+# Perform ANOVA on the ANCOVA model for Hypothesis 2
+ancova_anova_H2 <- anova(ancova_model_H2)
+
+# Print the ANOVA table for Hypothesis 2
+print(ancova_anova_H2)
+
+
+##hypothesis 3 moderator 
+source("C:/Users/faustine marcourt/OneDrive/Documents/ROTTERDAM UNIVERSITY/Courses/THESIS/process.R")
+
+## Calculate the average of Q12_1, Q12_2, Q12_3, and Q12_4
+cleaned_data$Q12_1 <- as.numeric(cleaned_data$Q12_1)
+cleaned_data$Q12_2 <- as.numeric(cleaned_data$Q12_2)
+cleaned_data$Q12_3 <- as.numeric(cleaned_data$Q12_3)
+cleaned_data$Q12_4 <- as.numeric(cleaned_data$Q12_4)
+
+cleaned_data$average_CA <- rowMeans(cleaned_data[, c("Q12_1", "Q12_2", "Q12_3", "Q12_4")], na.rm = TRUE)
+
+mean(cleaned_data$average_CA)
+
+# Define the cutoff point for low and high averages
+cutoff_point <- 3.84
+
+# Create a new column "CA" based on the values in "average_CA"
+cleaned_data$CA <- ifelse(cleaned_data$average_CA <= cutoff_point, "low average", "high average")
+
+# Convert "CA" column to numeric based on values
+cleaned_data$CA_numeric <- ifelse(cleaned_data$CA == "low average", 1, 
+                                  ifelse(cleaned_data$CA == "high average", 2, NA))
+
+# Convert factor variables to character or numeric
+cleaned_data$Q17 <- as.numeric(cleaned_data$Q17)
+cleaned_data$purchase_intention <- as.numeric(cleaned_data$purchase_intention)
+cleaned_data$CA_numeric <- as.numeric(cleaned_data$CA_numeric)
+
+# Load necessary package
+if (!require(car)) {
+  install.packages("car")
+  library(car)
+}
+# Perform Levene's Test for homogeneity of variances using CA as moderator
+levene_test_result <- leveneTest(purchase_intention ~ as.factor(Q17) * as.factor(CA_numeric), data = cleaned_data)
+print(levene_test_result)
+
+# Load necessary package
+if (!require(car)) {
+  install.packages("car")
+  library(car)
+}
+
+# Perform Levene's Test for homogeneity of variances using median
+levene_test_median <- leveneTest(purchase_intention ~ as.factor(Q17) * as.factor(CA_numeric), 
+                                 data = cleaned_data, center = "median")
+print(levene_test_median)
+
+# Perform Levene's Test for homogeneity of variances using mean
+levene_test_mean <- leveneTest(purchase_intention ~ as.factor(Q17) * as.factor(CA_numeric), 
+                               data = cleaned_data, center = "mean")
+print(levene_test_mean)
+
+
+
+model <- process(data = cleaned_data, y = "purchase_intention", x = "Q17", w = "CA_numeric", model = 1)
+
+# Ensure necessary libraries are loaded
+library(dplyr)
+library(ggplot2)
+library(plotrix)  # for std.error function
+
+# Calculate means and standard errors for each combination of condition and consumer attitude
+dv_mean_2 <- cleaned_data %>%
+  group_by(Q17, CA_numeric) %>%
+  summarise(m = mean(purchase_intention, na.rm = TRUE),
+            se = std.error(purchase_intention, na.rm = TRUE))
+
+# Round the mean values
+dv_mean_2$m <- round(dv_mean_2$m, 2)
+
+# Convert Q17 to a factor with appropriate labels
+dv_mean_2$Q17 <- factor(dv_mean_2$Q17, levels = c(1, 2, 3),
+                        labels = c("Positive condition", "Negative condition", "Control group"))
+
+# Convert CA_numeric to a factor with appropriate labels
+dv_mean_2$CA_numeric <- factor(dv_mean_2$CA_numeric, levels = c(1, 2),
+                               labels = c("Low average CA", "High average CA"))
+
+# Check the resulting summary table
+print(dv_mean_2)
+
+
+# Create the bar plot
+ggplot(dv_mean_2,                          # Data for plot
+       aes(fill = CA_numeric,              # Variable for color
+           x = Q17,                        # Variable for x-axis with custom labels
+           y = m)) +                       # Variable for y-axis
+  geom_text(aes(label = m),                # Variable for y-axis data
+            position = position_dodge(width = 0.9),  # Left/right position labels
+            vjust = -0.5) +                # Up/down position labels
+  xlab("Condition") +                      # Label x-axis
+  ylab("Purchase Intention") +             # Label y-axis
+  theme(legend.position = "bottom",        # Legend position
+        text = element_text(size = 12)) +  # Text size
+  coord_cartesian(ylim = c(0, 6)) +      # y-axis range (adjust as necessary)
+  scale_fill_discrete(name = "Consumer Attitude") +  # Legend title
+  geom_bar(position = 'dodge', stat = 'identity') +  # Type of bars
+  geom_errorbar(aes(ymin = m - qnorm(0.975) * se,    # Error bar low CI
+                    ymax = m + qnorm(0.975) * se),   # Error bar high CI
+                width = 0.2,                        # Width of error bars
+                position = position_dodge(width = 0.9))  # Left/right error bars
+
+# Extract residuals from the regression model
+residuals_H3 <- residuals(model)
+
+# Create a dataframe with purchase intention, condition, and residuals
+hist_data_H3 <- data.frame(purchase_intention = cleaned_data$purchase_intention,
+                           condition = cleaned_data$Q17,
+                           CA_numeric = cleaned_data$CA_numeric,
+                           residuals = residuals_H3)
+
+# Filter out only the positive (condition 1) and control (condition 3) groups
+hist_data_H3 <- hist_data_H3 %>% filter(condition %in% c("1", "3"))
+
+# Map condition labels
+hist_data_H3$condition <- factor(hist_data_H3$condition, levels = c("3", "1"),
+                                 labels = c("Control Group", "Positive Condition"))
+
+# Map CA_numeric labels
+hist_data_H3$CA_numeric <- factor(hist_data_H3$CA_numeric, levels = c(1, 2),
+                                  labels = c("Low CA", "High CA"))
+
+# Create a histogram with adjusted bar width
+ggplot(hist_data_H3, aes(x = condition, y = purchase_intention)) +
+  geom_bar(stat = "identity", position = "dodge", fill = "grey", width = 0.5) + # Adjust the width parameter
+  labs(title = "Purchase Intention by Condition and Consumer Attitude (Hypothesis 3)",
+       x = "Condition",
+       y = "Purchase Intention") +
+  facet_grid(~ CA_numeric) +  # Add facetting by CA_numeric
+  ylim(0, 8) +  
+  theme_minimal()
+
